@@ -177,7 +177,7 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\jfbos\\.nuget\\packages\\": {},
+    "C:\\Users\\midgl\\.nuget\\packages\\": {},
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
   },
   "project": {
@@ -186,27 +186,25 @@
       "hideWarningsAndErrors": true
     },
     "restore": {
-      "projectUniqueName": "C:\\Code\\recache\\ReCache\\ReCache.csproj",
+      "projectUniqueName": "C:\\Users\\midgl\\Documents\\Work\\ReCache\\ReCache\\ReCache.csproj",
       "projectName": "ReCache",
-      "projectPath": "C:\\Code\\recache\\ReCache\\ReCache.csproj",
-      "packagesPath": "C:\\Users\\jfbos\\.nuget\\packages\\",
-      "outputPath": "C:\\Code\\recache\\ReCache\\obj\\",
+      "projectPath": "C:\\Users\\midgl\\Documents\\Work\\ReCache\\ReCache\\ReCache.csproj",
+      "packagesPath": "C:\\Users\\midgl\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\midgl\\Documents\\Work\\ReCache\\ReCache\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
       ],
       "configFilePaths": [
-        "C:\\Users\\jfbos\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\ServiceFabricSDK.config"
+        "C:\\Users\\midgl\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "netstandard2.0"
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\Microsoft SDKs\\Service Fabric\\packages": {},
-        "O:\\Dropbox\\TeamAwesome\\NugetFeed": {},
+        "C:\\Users\\midgl\\Dropbox\\Team Awesome\\NugetFeed": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
