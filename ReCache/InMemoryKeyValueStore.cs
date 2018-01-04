@@ -18,6 +18,8 @@ namespace ReCache
 	{
 		private readonly ConcurrentDictionary<TKey, TValue> _entries;
 
+		public IEnumerable<KeyValuePair<TKey, TValue>> Entries => _entries;
+
 		public InMemoryKeyValueStore()
 		{
 			_entries = new ConcurrentDictionary<TKey, TValue>();
@@ -147,16 +149,6 @@ namespace ReCache
 				throw new ArgumentNullException(nameof(key));
 
 			return _entries.TryAdd(key, value);
-		}
-
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
-		{
-			return _entries.GetEnumerator();
-		}
-
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return this.GetEnumerator();
 		}
 	}
 }

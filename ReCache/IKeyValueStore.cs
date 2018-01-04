@@ -4,8 +4,9 @@ using System.Collections.Generic;
 namespace ReCache
 {
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix")]
-	public interface IKeyValueStore<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
+	public interface IKeyValueStore<TKey, TValue>
 	{
+		IEnumerable<KeyValuePair<TKey, TValue>> Entries { get; }
 		TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory);
 		bool TryAdd(TKey key, TValue value);
 		bool TryGetValue(TKey key, out TValue value);

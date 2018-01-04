@@ -43,7 +43,7 @@ namespace ReCache
 		/// </summary>
 		public int Count { get { return this.Items.Count(); } }
 
-		public IEnumerable<KeyValuePair<TKey, TValue>> Items { get { return _kvStore.Select(x => new KeyValuePair<TKey, TValue>(x.Key, x.Value.CachedValue)); } }
+		public IEnumerable<KeyValuePair<TKey, TValue>> Items { get { return _kvStore.Entries.Select(x => new KeyValuePair<TKey, TValue>(x.Key, x.Value.CachedValue)); } }
 
 		public Cache(
 			CacheOptions options)
@@ -350,7 +350,7 @@ namespace ReCache
 			// Clear() acquires all internal locks simultaneously, so will cause more contention.
 			//_cachedEntries.Clear();
 
-			foreach (var pair in _kvStore)
+			foreach (var pair in _kvStore.Entries)
 				Invalidate(pair.Key);
 		}
 
@@ -362,7 +362,7 @@ namespace ReCache
 
 		public void FlushInvalidatedEntries()
 		{
-			var entriesBeforeFlush = _kvStore.ToList();
+			var entriesBeforeFlush = _kvStore.Entries.ToList();
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 
@@ -370,7 +370,7 @@ namespace ReCache
 			var someTimeAgo = DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds);
 			var remainingEntries = new List<KeyValuePair<TKey, CacheEntry<TValue>>>();
 			// Enumerating over the ConcurrentDictionary is thread safe and lock free.
-			foreach (var pair in _kvStore)
+			foreach (var pair in _kvStore.Entries)
 			{
 				var key = pair.Key;
 				var entry = pair.Value;
@@ -424,7 +424,7 @@ namespace ReCache
 
 		public IEnumerator<KeyValuePair<TKey, CacheEntry<TValue>>> GetEnumerator()
 		{
-			return _kvStore.GetEnumerator();
+			return _kvStore.Entries.GetEnumerator();
 		}
 
 		public bool TryAdd(TKey key, TValue value)
