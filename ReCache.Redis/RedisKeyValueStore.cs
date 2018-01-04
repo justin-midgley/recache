@@ -5,39 +5,128 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using StackExchange.Redis;
+using Newtonsoft.Json;
+using System.Reflection;
 
 namespace ReCache.Redis
 {
-    public class RedisKeyValueStore<TKey, TValue> : IKeyValueStore<TKey, TValue>
-    {
+	public class RedisKeyValueStore<TKey, TValue> : IKeyValueStore<TKey, TValue>
+	{
+		private readonly IServer _server;
+		private readonly IDatabase _database;
+		private readonly string _keyPrefix;
+		private readonly TimeSpan _itemExpiry;
+
+		public RedisKeyValueStore(IServer server, int db, string keyPrefix, TimeSpan itemExpiry)
+		{
+			// TODO: constructor overloading + relevant argument validation
+			MethodInfo methodInfo = typeof(TKey).GetMethod("ToString");
+			if (methodInfo.GetBaseDefinition() == methodInfo)
+			{
+				throw new ArgumentException("ToString must be overridden in the TKey class to return unique keys for Redis.");
+			}
+
+			if (server == null)
+				throw new ArgumentNullException(nameof(server));
+			
+			_server = server;
+			_database = server.Multiplexer.GetDatabase(db);
+			_keyPrefix = keyPrefix;
+			_itemExpiry = itemExpiry;
+		}
+
 		public TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory)
 		{
-			throw new NotImplementedException();
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+			if (updateValueFactory == null)
+				throw new ArgumentNullException(nameof(updateValueFactory));
+
+			TValue setValue;
+
+			TValue tValue;
+			if (TryGetValue(key, out tValue))
+			{
+				setValue = updateValueFactory(key, tValue);
+			}
+			else
+			{
+				setValue = addValue;
+			}
+
+			_database.StringSet(key.ToString(), SerializeValue(setValue), _itemExpiry);
+
+			return setValue;
 		}
 
 		public bool TryAdd(TKey key, TValue value)
 		{
-			throw new NotImplementedException();
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+
+			TValue temp;
+			if (!TryGetValue(key, out temp))
+			{
+				return _database.StringSet(key.ToString(), SerializeValue(value), _itemExpiry);
+			}
+
+			return false;
 		}
 
 		public bool TryGetValue(TKey key, out TValue value)
 		{
-			throw new NotImplementedException();
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+
+			if (_database.KeyExists(key.ToString()))
+			{
+				string stringValue = _database.StringGet(key.ToString());
+				value = DeserializeValue(stringValue);
+				return true;
+			}
+
+			value = default(TValue);
+			return false;
 		}
 
 		public bool TryRemove(TKey key, out TValue value)
 		{
-			throw new NotImplementedException();
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+
+			if (TryGetValue(key, out value))
+			{
+				return _database.KeyDelete(key.ToString());
+			}
+			// Todo: error handling
+			value = default(TValue);
+			return false;
 		}
 
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		private string SerializeValue(TValue value)
 		{
-			throw new NotImplementedException();
+			return JsonConvert.SerializeObject(value);
 		}
 
-		IEnumerator IEnumerable.GetEnumerator()
+		private TValue DeserializeValue(string value)
 		{
-			throw new NotImplementedException();
+			return JsonConvert.DeserializeObject<TValue>(value);
+		}
+
+		public IEnumerable<KeyValuePair<TKey, TValue>> Entries => throw new NotImplementedException();
+
+		private IEnumerable<KeyValuePair<TKey, TValue>> GetEntries()
+		{
+			foreach (var key in _server.Keys(_database.Database, $"{_keyPrefix}*").AsParallel())
+			{
+
+
+				TValue value;
+				if (TryGetValue(key, out value))
+				{
+					yield return new KeyValuePair<TKey, TValue>(, value);
+				}
+			}
 		}
 	}
 }
