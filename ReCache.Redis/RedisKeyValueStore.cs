@@ -17,6 +17,8 @@ namespace ReCache.Redis
 		private readonly string _keyPrefix;
 		private readonly TimeSpan _itemExpiry;
 
+		public IEnumerable<KeyValuePair<TKey, TValue>> Entries => GetEntries();
+
 		public RedisKeyValueStore(IServer server, int db, string keyPrefix, TimeSpan itemExpiry)
 		{
 			// TODO: constructor overloading + relevant argument validation
@@ -98,7 +100,7 @@ namespace ReCache.Redis
 			{
 				return _database.KeyDelete(key.ToString());
 			}
-			// Todo: error handling
+
 			value = default(TValue);
 			return false;
 		}
@@ -113,20 +115,9 @@ namespace ReCache.Redis
 			return JsonConvert.DeserializeObject<TValue>(value);
 		}
 
-		public IEnumerable<KeyValuePair<TKey, TValue>> Entries => throw new NotImplementedException();
-
 		private IEnumerable<KeyValuePair<TKey, TValue>> GetEntries()
 		{
-			foreach (var key in _server.Keys(_database.Database, $"{_keyPrefix}*").AsParallel())
-			{
-
-
-				TValue value;
-				if (TryGetValue(key, out value))
-				{
-					yield return new KeyValuePair<TKey, TValue>(, value);
-				}
-			}
+			throw new NotImplementedException();
 		}
 	}
 }
