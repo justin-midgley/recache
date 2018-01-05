@@ -5,6 +5,12 @@
 *.suo
 *.user
 *.sln.docstates
+.vs/
+*.swp
+
+# Roslyn cache directories
+*.ide/
+.idea/
 
 # Build results
 [Dd]ebug/
