@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ReCache
 {
@@ -16,13 +17,13 @@ namespace ReCache
 	/// <typeparam name="TValue"></typeparam>
 	public class InMemoryKeyValueStore<TKey, TValue> : IKeyValueStore<TKey, TValue>
 	{
-		private readonly ConcurrentDictionary<TKey, TValue> _entries;
+		private readonly ConcurrentDictionary<TKey, InMemoryCacheEntry<TValue>> _entries;
 
-		public IEnumerable<KeyValuePair<TKey, TValue>> Entries => _entries;
+		public IEnumerable<KeyValuePair<TKey, ICacheEntry<TValue>>> Entries => _entries.Select(x => new KeyValuePair<TKey, ICacheEntry<TValue>>(x.Key, x.Value));
 
 		public InMemoryKeyValueStore()
 		{
-			_entries = new ConcurrentDictionary<TKey, TValue>();
+			_entries = new ConcurrentDictionary<TKey, InMemoryCacheEntry<TValue>>();
 		}
 
 		public InMemoryKeyValueStore(IEqualityComparer<TKey> comparer)
@@ -30,7 +31,7 @@ namespace ReCache
 			if (comparer == null)
 				throw new ArgumentNullException(nameof(comparer));
 
-			_entries = new ConcurrentDictionary<TKey, TValue>(comparer);
+			_entries = new ConcurrentDictionary<TKey, InMemoryCacheEntry<TValue>>(comparer);
 		}
 
 		// Summary:
@@ -52,12 +53,17 @@ namespace ReCache
 		// Exceptions:
 		//   T:System.ArgumentNullException:
 		//     key is null.
-		public bool TryGetValue(TKey key, out TValue value)
+		public bool TryGetEntry(TKey key, out ICacheEntry<TValue> entry)
 		{
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
 
-			return _entries.TryGetValue(key, out value);
+			InMemoryCacheEntry<TValue> cacheEntry;
+			bool result = _entries.TryGetValue(key, out cacheEntry);
+
+			entry = cacheEntry;
+
+			return result;
 		}
 
 		// Summary:
@@ -86,14 +92,21 @@ namespace ReCache
 		//
 		//   T:System.OverflowException:
 		//     The dictionary already contains the maximum number of elements (System.Int32.MaxValue).
-		public TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory)
+		public ICacheEntry<TValue> AddOrUpdateEntry(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory)
 		{
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
 			if (updateValueFactory == null)
 				throw new ArgumentNullException(nameof(updateValueFactory));
 
-			return _entries.AddOrUpdate(key, addValue, updateValueFactory);
+			InMemoryCacheEntry<TValue> entry = new InMemoryCacheEntry<TValue> { CachedValue = addValue };
+
+			Func<TKey, InMemoryCacheEntry<TValue>, InMemoryCacheEntry<TValue>> updateEntryFactory = (k, e) =>
+			{
+				return new InMemoryCacheEntry<TValue> { CachedValue = updateValueFactory(k, e.CachedValue) };
+			};
+
+			return _entries.AddOrUpdate(key, entry, updateEntryFactory);
 		}
 
 		//
@@ -114,12 +127,17 @@ namespace ReCache
 		// Exceptions:
 		//   T:System.ArgumentNullException:
 		//     key is null.
-		public bool TryRemove(TKey key, out TValue value)
+		public bool TryRemoveEntry(TKey key, out ICacheEntry<TValue> entry)
 		{
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
 
-			return _entries.TryRemove(key, out value);
+			InMemoryCacheEntry<TValue> cacheEntry;
+			bool result = _entries.TryRemove(key, out cacheEntry);
+
+			entry = cacheEntry;
+
+			return result;
 		}
 
 		//
@@ -148,7 +166,58 @@ namespace ReCache
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
 
-			return _entries.TryAdd(key, value);
+			var entry = new InMemoryCacheEntry<TValue>();
+			entry.CachedValue = value;
+
+			return _entries.TryAdd(key, entry);
+		}
+
+		public int FlushInvalidatedEntries(int maximumCacheSizeIndicator, DateTime someTimeAgo, Func<TKey, bool> invalidateFunc)
+		{
+			// Firsh flush stale entries.
+			var remainingEntries = new List<KeyValuePair<TKey, ICacheEntry<TValue>>>();
+			// Enumerating over the ConcurrentDictionary is thread safe and lock free.
+			foreach (var pair in this.Entries)
+			{
+				var key = pair.Key;
+				var entry = pair.Value;
+				if (entry.TimeLoaded < someTimeAgo)
+				{
+					// Entry is stale, remove it.
+					if (!invalidateFunc(key))
+						remainingEntries.Add(pair);
+				}
+				else
+					remainingEntries.Add(pair);
+			}
+
+			// Now flush anything exceeding the max size, starting with the oldest entries first.
+			if (remainingEntries.Count > maximumCacheSizeIndicator)
+			{
+				int numberOfEntriesToTrim = remainingEntries.Count - maximumCacheSizeIndicator;
+				var keysToRemove = remainingEntries
+					.OrderBy(p => p.Value.TimeLoaded)
+					.ThenBy(p => p.Value.TimeLastAccessed)
+					.Take(numberOfEntriesToTrim)
+					.ToList();
+
+				foreach (var entry in keysToRemove)
+				{
+					invalidateFunc(entry.Key);
+					remainingEntries.Remove(entry);
+				}
+			}
+
+			return remainingEntries.Count;
+		}
+
+		public void InvalidateAll(Func<TKey, bool> invalidateFunc)
+		{
+			// Clear() acquires all internal locks simultaneously, so will cause more contention.
+			//_cachedEntries.Clear();
+
+			foreach (var pair in this.Entries)
+				invalidateFunc(pair.Key);
 		}
 	}
 }

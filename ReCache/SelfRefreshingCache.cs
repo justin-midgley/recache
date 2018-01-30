@@ -30,8 +30,8 @@ namespace ReCache
 		// The backing, generation cache, with the int part of the key being the generation of the cache entry.
 		private ICache<Tuple<TKey, int>, TValue> _generationCache;
 
-		private Action<TKey, CacheEntry<TValue>> _generationCacheHitCallback;
-		private Action<TKey, CacheEntry<TValue>, long> _generationCacheMissedCallback;
+		private Action<TKey, ICacheEntry<TValue>> _generationCacheHitCallback;
+		private Action<TKey, ICacheEntry<TValue>, long> _generationCacheMissedCallback;
 
 		public string CacheName
 		{
@@ -74,8 +74,9 @@ namespace ReCache
 				return this.LoaderFunction(generationKey.Item1);
 			};
 
+			InMemoryKeyValueStore<Tuple<TKey, int>, TValue> kvStore = new InMemoryKeyValueStore<Tuple<TKey, int>, TValue>(new TupleComparer<TKey, int>());
 			_generationCache = new Cache<Tuple<TKey, int>, TValue>(
-				new TupleComparer<TKey, int>(),
+				kvStore,
 				options.StandardCacheOptions,
 				versionLoderFunction);
 
@@ -147,7 +148,7 @@ namespace ReCache
 			finally { } // suppress client code exceptions
 		}
 
-		private async Task<IOrderedEnumerable<KeyValuePair<Tuple<TKey, int>, CacheEntry<TValue>>>> LoadNextGenerationAsync(int nextGeneration)
+		private async Task<IOrderedEnumerable<KeyValuePair<Tuple<TKey, int>, ICacheEntry<TValue>>>> LoadNextGenerationAsync(int nextGeneration)
 		{
 			var currentGenerationEntriesToRefresh = _generationCache
 				.Where(entry => entry.Key.Item2 == _currentGeneration)
@@ -256,12 +257,12 @@ namespace ReCache
 			return this.GetEnumerator();
 		}
 
-		public IEnumerator<KeyValuePair<TKey, CacheEntry<TValue>>> GetEnumerator()
+		public IEnumerator<KeyValuePair<TKey, ICacheEntry<TValue>>> GetEnumerator()
 		{
 			int gen = _currentGeneration;
 			var currentGenerationEntries = _generationCache
 				.Where(e => e.Key.Item2 == gen)
-				.Select(e => new KeyValuePair<TKey, CacheEntry<TValue>>(e.Key.Item1, e.Value));
+				.Select(e => new KeyValuePair<TKey, ICacheEntry<TValue>>(e.Key.Item1, e.Value));
 
 			foreach (var entry in currentGenerationEntries)
 				yield return entry;
@@ -269,9 +270,6 @@ namespace ReCache
 
 		public bool TryAdd(TKey key, TValue value)
 		{
-			var entry = new CacheEntry<TValue>();
-			entry.CachedValue = value;
-			entry.TimeLoaded = DateTime.UtcNow;
 			return _generationCache.TryAdd(GenerationKey(key), value);
 		}
 
@@ -320,7 +318,7 @@ namespace ReCache
 			throw new NotImplementedException("Custom loaders do not make sense in a SelfRefreshingCache. CacheName: " + this.CacheName);
 		}
 
-		public Action<TKey, CacheEntry<TValue>> HitCallback
+		public Action<TKey, ICacheEntry<TValue>> HitCallback
 		{
 			get
 			{
@@ -341,7 +339,7 @@ namespace ReCache
 			}
 		}
 
-		public Action<TKey, CacheEntry<TValue>, long> MissedCallback
+		public Action<TKey, ICacheEntry<TValue>, long> MissedCallback
 		{
 			get
 			{

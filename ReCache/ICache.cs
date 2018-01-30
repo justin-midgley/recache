@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 namespace ReCache
 {
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix")]
-	public interface ICache<TKey, TValue> : IEnumerable<KeyValuePair<TKey, CacheEntry<TValue>>>, IDisposable
+	public interface ICache<TKey, TValue> : IEnumerable<KeyValuePair<TKey, ICacheEntry<TValue>>>, IDisposable
 	{
 		TValue Get(TKey key);
 
@@ -41,10 +41,10 @@ namespace ReCache
 		IEnumerable<KeyValuePair<TKey, TValue>> Items { get; }
 
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures")]
-		Action<TKey, CacheEntry<TValue>> HitCallback { get; set; }
+		Action<TKey, ICacheEntry<TValue>> HitCallback { get; set; }
 
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures")]
-		Action<TKey, CacheEntry<TValue>, long> MissedCallback { get; set; }
+		Action<TKey, ICacheEntry<TValue>, long> MissedCallback { get; set; }
 
 		Action<int, int, long> FlushCallback { get; set; }
 	}

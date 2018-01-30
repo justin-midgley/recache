@@ -150,7 +150,9 @@ namespace ReCache
 			if (builder == null)
 				throw new ArgumentNullException(nameof(builder));
 
-			var cache = new Cache<TKey, TValue>(builder.CacheOptions);
+
+			InMemoryKeyValueStore<TKey, TValue> kvStore = new InMemoryKeyValueStore<TKey, TValue>();
+			var cache = new Cache<TKey, TValue>(kvStore, builder.CacheOptions);
 			cache.LoaderFunction = builder.LoaderFunc;
 			return cache;
 		}

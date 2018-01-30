@@ -29,7 +29,7 @@ namespace ReCache
 		}
 
 		private readonly ConcurrentDictionary<TKey, KeyGate<TKey>> _keyGates;
-		private readonly IKeyValueStore<TKey, CacheEntry<TValue>> _kvStore;
+		private readonly IKeyValueStore<TKey, TValue> _kvStore;
 		private CacheOptions _options;
 		private Timer _flushTimer;
 
@@ -45,12 +45,14 @@ namespace ReCache
 
 		public IEnumerable<KeyValuePair<TKey, TValue>> Items { get { return _kvStore.Entries.Select(x => new KeyValuePair<TKey, TValue>(x.Key, x.Value.CachedValue)); } }
 
+		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
 		public Cache(
 			CacheOptions options)
 			: this(options, null)
 		{
 		}
 
+		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
 		public Cache(
 			CacheOptions options,
 			Func<TKey, Task<TValue>> loaderFunction)
@@ -59,10 +61,11 @@ namespace ReCache
 
 			LoaderFunction = loaderFunction;
 			_keyGates = new ConcurrentDictionary<TKey, KeyGate<TKey>>();
-			_kvStore = new InMemoryKeyValueStore<TKey, CacheEntry<TValue>>();
+			_kvStore = new InMemoryKeyValueStore<TKey, TValue>();
 			this.InitializeFlushTimer();
 		}
 
+		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
 		public Cache(
 			IEqualityComparer<TKey> comparer,
 			CacheOptions options)
@@ -70,6 +73,7 @@ namespace ReCache
 		{
 		}
 
+		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
 		public Cache(
 			IEqualityComparer<TKey> comparer,
 			CacheOptions options,
@@ -80,7 +84,22 @@ namespace ReCache
 				throw new ArgumentNullException(nameof(comparer));
 
 			_keyGates = new ConcurrentDictionary<TKey, KeyGate<TKey>>();
-			_kvStore = new InMemoryKeyValueStore<TKey, CacheEntry<TValue>>(comparer);
+			_kvStore = new InMemoryKeyValueStore<TKey, TValue>(comparer);
+			this.InitializeFlushTimer();
+		}
+
+		public Cache(IKeyValueStore<TKey, TValue> kvStore, CacheOptions options)
+			: this(kvStore, options, null)
+		{
+		}
+
+		public Cache(IKeyValueStore<TKey, TValue> kvStore, CacheOptions options, Func<TKey, Task<TValue>> loaderFunction)
+		{
+			this.SetOptions(options);
+
+			LoaderFunction = loaderFunction;
+			_keyGates = new ConcurrentDictionary<TKey, KeyGate<TKey>>();
+			_kvStore = kvStore;
 			this.InitializeFlushTimer();
 		}
 
@@ -178,23 +197,23 @@ namespace ReCache
 
 		private async Task<TValue> GetIfCachedAndNotExpiredElseLoad(TKey key, bool resetExpiryTimeoutIfAlreadyCached, Func<TKey, Task<TValue>> loaderFunction)
 		{
-			CacheEntry<TValue> entry;
-			if (_kvStore.TryGetValue(key, out entry))
+			ICacheEntry<TValue> entry;
+			if (_kvStore.TryGetEntry(key, out entry))
 			{
 				DateTime someTimeAgo = CalculateExpiryTimeStartOffset();
 				if (entry.TimeLoaded < someTimeAgo)
 				{
 					// Entry is stale, reload.
-					var newEntry = await this.LoadAndCacheEntryAsync(key, loaderFunction).ConfigureAwait(false);
-					if (!object.ReferenceEquals(newEntry.CachedValue, entry.CachedValue))
+					var newValue = await this.LoadAndCacheEntryAsync(key, loaderFunction).ConfigureAwait(false);
+					if (!object.ReferenceEquals(newValue, entry.CachedValue))
 						DisposeEntry(entry);
 
-					return newEntry.CachedValue;
+					return newValue;
 				}
 				else // Cached entry is still good.
 				{
 					if (resetExpiryTimeoutIfAlreadyCached)
-						entry.TimeLoaded = DateTime.UtcNow;
+						entry.ResetExpiryTimeout();
 
 					TryHitCallback(key, entry);
 
@@ -203,10 +222,10 @@ namespace ReCache
 			}
 
 			// not in cache at all.
-			return (await this.LoadAndCacheEntryAsync(key, loaderFunction).ConfigureAwait(false)).CachedValue;
+			return (await this.LoadAndCacheEntryAsync(key, loaderFunction).ConfigureAwait(false));
 		}
 
-		private void TryHitCallback(TKey key, CacheEntry<TValue> entry)
+		private void TryHitCallback(TKey key, ICacheEntry<TValue> entry)
 		{
 			try
 			{
@@ -247,8 +266,8 @@ namespace ReCache
 			TKey key,
 			bool resetExpiryTimeoutIfAlreadyCached)
 		{
-			CacheEntry<TValue> entry;
-			if (_kvStore.TryGetValue(key, out entry))
+			ICacheEntry<TValue> entry;
+			if (_kvStore.TryGetEntry(key, out entry))
 			{
 				var someTimeAgo = DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds);
 				if (entry.TimeLoaded < someTimeAgo)
@@ -260,7 +279,7 @@ namespace ReCache
 				TryHitCallback(key, entry);
 
 				if (resetExpiryTimeoutIfAlreadyCached)
-					entry.TimeLoaded = DateTime.UtcNow; ;
+					entry.ResetExpiryTimeout();
 				return entry.CachedValue;
 			}
 			else // not in cache at all.
@@ -272,8 +291,8 @@ namespace ReCache
 			bool resetExpiryTimeoutIfAlreadyCached,
 			out TValue value)
 		{
-			CacheEntry<TValue> entry;
-			if (_kvStore.TryGetValue(key, out entry))
+			ICacheEntry<TValue> entry;
+			if (_kvStore.TryGetEntry(key, out entry))
 			{
 				var someTimeAgo = DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds);
 				if (entry.TimeLoaded < someTimeAgo)
@@ -286,7 +305,7 @@ namespace ReCache
 				TryHitCallback(key, entry);
 
 				if (resetExpiryTimeoutIfAlreadyCached)
-					entry.TimeLoaded = DateTime.UtcNow; ;
+					entry.ResetExpiryTimeout();
 
 				value = entry.CachedValue;
 				return true;
@@ -298,25 +317,25 @@ namespace ReCache
 			}
 		}
 
-		private async Task<CacheEntry<TValue>> LoadAndCacheEntryAsync(TKey key, Func<TKey, Task<TValue>> loaderFunction)
+		private async Task<TValue> LoadAndCacheEntryAsync(TKey key, Func<TKey, Task<TValue>> loaderFunction)
 		{
 			if (loaderFunction == null)
 				throw new ArgumentNullException(nameof(loaderFunction));
 
 			var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-			CacheEntry<TValue> entry = new CacheEntry<TValue>();
-			entry.CachedValue = await loaderFunction(key).ConfigureAwait(false);
-			entry.TimeLoaded = DateTime.UtcNow; ;
-			_kvStore.AddOrUpdate(key, entry, (k, v) => entry);
+			TValue value = await loaderFunction(key).ConfigureAwait(false);
+
+			ICacheEntry<TValue> entry = _kvStore.AddOrUpdateEntry(key, value, (k, v) => value);
+
 			stopwatch.Stop();
 
 			TryMissedCallback(key, entry, stopwatch.ElapsedMilliseconds);
 
-			return entry;
+			return value;
 		}
 
-		private void TryMissedCallback(TKey key, CacheEntry<TValue> entry, long elapsedMilliseconds)
+		private void TryMissedCallback(TKey key, ICacheEntry<TValue> entry, long elapsedMilliseconds)
 		{
 			try
 			{
@@ -338,8 +357,8 @@ namespace ReCache
 
 		public bool Invalidate(TKey key)
 		{
-			CacheEntry<TValue> tmp;
-			bool removed = _kvStore.TryRemove(key, out tmp);
+			ICacheEntry<TValue> tmp;
+			bool removed = _kvStore.TryRemoveEntry(key, out tmp);
 			if (removed)
 				DisposeEntry(tmp);
 			return removed;
@@ -347,17 +366,16 @@ namespace ReCache
 
 		public void InvalidateAll()
 		{
-			// Clear() acquires all internal locks simultaneously, so will cause more contention.
-			//_cachedEntries.Clear();
+			_kvStore.InvalidateAll(this.Invalidate);
 
-			foreach (var pair in _kvStore.Entries)
-				Invalidate(pair.Key);
+			//foreach (var pair in _kvStore.Entries)
+			//	Invalidate(pair.Key);
 		}
 
 		public bool HasKey(TKey key)
 		{
-			CacheEntry<TValue> tmp;
-			return _kvStore.TryGetValue(key, out tmp);
+			ICacheEntry<TValue> tmp;
+			return _kvStore.TryGetEntry(key, out tmp);
 		}
 
 		public void FlushInvalidatedEntries()
@@ -366,46 +384,14 @@ namespace ReCache
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 
-			// Firsh flush stale entries.
-			var someTimeAgo = DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds);
-			var remainingEntries = new List<KeyValuePair<TKey, CacheEntry<TValue>>>();
-			// Enumerating over the ConcurrentDictionary is thread safe and lock free.
-			foreach (var pair in _kvStore.Entries)
-			{
-				var key = pair.Key;
-				var entry = pair.Value;
-				if (entry.TimeLoaded < someTimeAgo)
-				{
-					// Entry is stale, remove it.
-					if (!this.Invalidate(key))
-						remainingEntries.Add(pair);
-				}
-				else
-					remainingEntries.Add(pair);
-			}
-
-			// Now flush anything exceeding the max size, starting with the oldest entries first.
-			if (remainingEntries.Count > _options.MaximumCacheSizeIndicator)
-			{
-				int numberOfEntriesToTrim = remainingEntries.Count - _options.MaximumCacheSizeIndicator;
-				var keysToRemove = remainingEntries
-					.OrderBy(p => p.Value.TimeLoaded)
-					.ThenBy(p => p.Value.TimeLastAccessed)
-					.Take(numberOfEntriesToTrim)
-					.ToList();
-
-				foreach (var entry in keysToRemove)
-				{
-					this.Invalidate(entry.Key);
-					remainingEntries.Remove(entry);
-				}
-			}
+			var remainingEntriesCount = _kvStore.FlushInvalidatedEntries(_options.MaximumCacheSizeIndicator, 
+				DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds), 
+				this.Invalidate);
 
 			stopwatch.Stop();
 
-			int remainingCount = remainingEntries.Count();
-			int itemsFlushed = entriesBeforeFlush.Count() - remainingCount;
-			TryFlushCallback(remainingCount, itemsFlushed, stopwatch.ElapsedMilliseconds);
+			int itemsFlushed = entriesBeforeFlush.Count() - remainingEntriesCount;
+			TryFlushCallback(remainingEntriesCount, itemsFlushed, stopwatch.ElapsedMilliseconds);
 		}
 
 		private void TryFlushCallback(int remainingCount, int itemsFlushed, long elapsedMilliseconds)
@@ -422,17 +408,14 @@ namespace ReCache
 			return this.GetEnumerator();
 		}
 
-		public IEnumerator<KeyValuePair<TKey, CacheEntry<TValue>>> GetEnumerator()
+		public IEnumerator<KeyValuePair<TKey, ICacheEntry<TValue>>> GetEnumerator()
 		{
 			return _kvStore.Entries.GetEnumerator();
 		}
 
 		public bool TryAdd(TKey key, TValue value)
 		{
-			var entry = new CacheEntry<TValue>();
-			entry.CachedValue = value;
-			entry.TimeLoaded = DateTime.UtcNow;
-			return _kvStore.TryAdd(key, entry);
+			return _kvStore.TryAdd(key, value);
 		}
 
 		public void Dispose()
@@ -477,7 +460,7 @@ namespace ReCache
 			// free native resources if there are any.
 		}
 
-		private void DisposeEntry(CacheEntry<TValue> entry)
+		private void DisposeEntry(ICacheEntry<TValue> entry)
 		{
 			if (_options.DisposeExpiredValuesIfDisposable)
 			{
@@ -489,12 +472,12 @@ namespace ReCache
 			}
 		}
 
-		public Action<TKey, CacheEntry<TValue>> HitCallback { get; set; }
+		public Action<TKey, ICacheEntry<TValue>> HitCallback { get; set; }
 
 		/// <summary>
 		/// The long parameter is the duration in ms.
 		/// </summary>
-		public Action<TKey, CacheEntry<TValue>, long> MissedCallback { get; set; }
+		public Action<TKey, ICacheEntry<TValue>, long> MissedCallback { get; set; }
 
 		/// <summary>
 		/// The 3 long parameters of the action are:
