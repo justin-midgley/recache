@@ -40,7 +40,10 @@ namespace Tests
 				return await Task.FromResult(val);
 			};
 
+			var kvStore = new InMemoryKeyValueStore<string, int>();
+
 			var _cache = new Cache<string, int>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromSeconds(1),
@@ -73,8 +76,10 @@ namespace Tests
 				return await Task.FromResult(val);
 			};
 
+			var kvStore = new InMemoryKeyValueStore<IEnumerable<string>, int>(new EnumerableStringComparer());
+
 			var _cache = new Cache<IEnumerable<string>, int>(
-				new EnumerableStringComparer(),
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromSeconds(1),
@@ -93,7 +98,10 @@ namespace Tests
 		[TestMethod]
 		public async Task StaleEntriesShouldBeAutoFlushed()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromSeconds(1),
@@ -114,7 +122,10 @@ namespace Tests
 		[TestMethod]
 		public async Task EntriesShouldNotBeFlushedIfExtendWasUsed()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CircuitBreakerTimeoutForAdditionalThreadsPerKey = TimeSpan.FromSeconds(1),
@@ -137,7 +148,10 @@ namespace Tests
 		[TestMethod]
 		public async Task StaleEntriesShouldNotBeFlushedIfFlushIntervalIsNotReached()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromMilliseconds(10),
@@ -206,7 +220,11 @@ namespace Tests
 		{
 			var random = new Random();
 			int numberOfLoaderCalls = await Task.FromResult(0);
+
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CircuitBreakerTimeoutForAdditionalThreadsPerKey = TimeSpan.MaxValue,
@@ -265,7 +283,10 @@ namespace Tests
 			int numberOfLoaderCallInitiations = await Task.FromResult(0);
 			int numberOfLoaderCalls = await Task.FromResult(0);
 
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			using (var cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CircuitBreakerTimeoutForAdditionalThreadsPerKey = timeout,
@@ -338,7 +359,10 @@ namespace Tests
 
 			int numberOfLoaderCallInitiations = await Task.FromResult(0);
 
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			using (var cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheName = "MyCache",
@@ -428,7 +452,10 @@ namespace Tests
 		[TestMethod]
 		public async Task EntriesExceedingMaxShouldBeAutoFlushedEvenIfNotStale()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromMinutes(1),
@@ -448,7 +475,10 @@ namespace Tests
 		[TestMethod]
 		public async Task TestCacheFlushCallback()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheName = nameof(TestCacheFlushCallback),
@@ -543,7 +573,10 @@ namespace Tests
 		[TestMethod]
 		public async Task TryAddToCacheShouldIncreaseItemsInList()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromSeconds(1),
@@ -564,7 +597,10 @@ namespace Tests
 		[TestMethod]
 		public async Task ItemsPropertyShouldReturnListOfItemsInCache()
 		{
+			var kvStore = new InMemoryKeyValueStore<int, string>();
+
 			var _cache = new Cache<int, string>(
+				kvStore,
 				new CacheOptions
 				{
 					CacheItemExpiry = TimeSpan.FromSeconds(1),

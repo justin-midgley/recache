@@ -24,6 +24,7 @@ namespace Tests
 				return await Task.FromResult(string.Format("value{0}", rnd));
 			};
 
+			var kvStore = new InMemoryKeyValueStore<int, string>();
 			var cacheOptions = new CacheOptions
 			{
 				CacheItemExpiry = TimeSpan.FromSeconds(1),
@@ -32,7 +33,7 @@ namespace Tests
 				MaximumCacheSizeIndicator = 100
 			};
 			var cache = new Cache<int, string>(
-				cacheOptions, loaderFunction);
+				kvStore, cacheOptions, loaderFunction);
 
 			// Record the first hit values for 100 keys
 			var firstHitValues = new List<string>();
