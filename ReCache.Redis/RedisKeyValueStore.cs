@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using StackExchange.Redis;
-using Newtonsoft.Json;
-using System.Reflection;
 using System.Net;
+using System.Reflection;
+using Newtonsoft.Json;
+using StackExchange.Redis;
 using static System.FormattableString;
 
 namespace ReCache.Redis
@@ -40,7 +37,7 @@ namespace ReCache.Redis
 		public IEnumerable<KeyValuePair<TKey, ICacheEntry<TValue>>> Entries => GetEntries();
 
 		public RedisKeyValueStore(IServer server, int db, TimeSpan keyExpiryTimeout)
-			:this(server, db, keyExpiryTimeout, null, null)
+			: this(server, db, keyExpiryTimeout, null, null)
 		{
 		}
 
@@ -158,7 +155,7 @@ namespace ReCache.Redis
 			return JsonConvert.SerializeObject(value);
 		}
 
-		public static TValue DeserializeValue(string value)
+		internal static TValue DeserializeValue(string value)
 		{
 			return JsonConvert.DeserializeObject<TValue>(value);
 		}

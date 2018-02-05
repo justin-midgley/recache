@@ -16,6 +16,7 @@ namespace ReCache
 		private Random _expiryRandomizer = new Random();
 		private bool _isDisposed = false;
 		private readonly object _disposeLock = new object();
+
 		public string CacheName
 		{
 			get { return this._cacheName; }
@@ -368,6 +369,7 @@ namespace ReCache
 		{
 			_kvStore.InvalidateAll(this.Invalidate);
 
+			//TODO: delete
 			//foreach (var pair in _kvStore.Entries)
 			//	Invalidate(pair.Key);
 		}
@@ -384,8 +386,8 @@ namespace ReCache
 			var stopwatch = new Stopwatch();
 			stopwatch.Start();
 
-			var remainingEntriesCount = _kvStore.FlushInvalidatedEntries(_options.MaximumCacheSizeIndicator, 
-				DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds), 
+			var remainingEntriesCount = _kvStore.FlushInvalidatedEntries(_options.MaximumCacheSizeIndicator,
+				DateTime.UtcNow.AddMilliseconds(-_options.CacheItemExpiry.TotalMilliseconds),
 				this.Invalidate);
 
 			stopwatch.Stop();
