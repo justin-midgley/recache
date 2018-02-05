@@ -46,49 +46,6 @@ namespace ReCache
 
 		public IEnumerable<KeyValuePair<TKey, TValue>> Items { get { return _kvStore.Entries.Select(x => new KeyValuePair<TKey, TValue>(x.Key, x.Value.CachedValue)); } }
 
-		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
-		public Cache(
-			CacheOptions options)
-			: this(options, null)
-		{
-		}
-
-		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
-		public Cache(
-			CacheOptions options,
-			Func<TKey, Task<TValue>> loaderFunction)
-		{
-			this.SetOptions(options);
-
-			LoaderFunction = loaderFunction;
-			_keyGates = new ConcurrentDictionary<TKey, KeyGate<TKey>>();
-			_kvStore = new InMemoryKeyValueStore<TKey, TValue>();
-			this.InitializeFlushTimer();
-		}
-
-		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
-		public Cache(
-			IEqualityComparer<TKey> comparer,
-			CacheOptions options)
-			: this(comparer, options, null)
-		{
-		}
-
-		[Obsolete("Use a constructor that accepts IKeyValueStore<TKey, TValue> instead.")]
-		public Cache(
-			IEqualityComparer<TKey> comparer,
-			CacheOptions options,
-			Func<TKey, Task<TValue>> loaderFunction)
-			: this(options, loaderFunction)
-		{
-			if (comparer == null)
-				throw new ArgumentNullException(nameof(comparer));
-
-			_keyGates = new ConcurrentDictionary<TKey, KeyGate<TKey>>();
-			_kvStore = new InMemoryKeyValueStore<TKey, TValue>(comparer);
-			this.InitializeFlushTimer();
-		}
-
 		public Cache(
 			IKeyValueStore<TKey, TValue> kvStore,
 			CacheOptions options)
