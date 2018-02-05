@@ -89,13 +89,21 @@ namespace ReCache
 			this.InitializeFlushTimer();
 		}
 
-		public Cache(IKeyValueStore<TKey, TValue> kvStore, CacheOptions options)
+		public Cache(
+			IKeyValueStore<TKey, TValue> kvStore,
+			CacheOptions options)
 			: this(kvStore, options, null)
 		{
 		}
 
-		public Cache(IKeyValueStore<TKey, TValue> kvStore, CacheOptions options, Func<TKey, Task<TValue>> loaderFunction)
+		public Cache(
+			IKeyValueStore<TKey, TValue> kvStore,
+			CacheOptions options,
+			Func<TKey, Task<TValue>> loaderFunction)
 		{
+			if (kvStore == null)
+				throw new ArgumentNullException(nameof(kvStore));
+
 			this.SetOptions(options);
 
 			LoaderFunction = loaderFunction;
