@@ -5,6 +5,7 @@ namespace ReCache
 	public class InMemoryCacheEntry<TValue> : ICacheEntry<TValue>
 	{
 		private TValue _cachedValue;
+
 		public TValue CachedValue
 		{
 			get
@@ -17,6 +18,7 @@ namespace ReCache
 				_cachedValue = value;
 			}
 		}
+
 		public DateTime TimeLoaded { get; private set; } = DateTime.UtcNow;
 		public DateTime TimeLastAccessed { get; private set; }
 

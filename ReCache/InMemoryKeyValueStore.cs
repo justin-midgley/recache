@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,7 +41,7 @@ namespace ReCache
 		//     The key of the value to get.
 		//
 		//   value:
-		//     When this method returns, contains the object 
+		//     When this method returns, contains the object
 		//     that has the specified key, or the default value of the type if the operation
 		//     failed.
 		//
@@ -68,7 +67,7 @@ namespace ReCache
 
 		// Summary:
 		//     Adds a key/value pair.
-		//     if the key does not already exist, or updates a key/value pair 
+		//     if the key does not already exist, or updates a key/value pair
 		//     by using the specified function if the key already exists.
 		//
 		// Parameters:
